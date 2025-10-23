@@ -2,97 +2,64 @@ package com.onplay.reborn.onplayreborn.resources;
 
 import com.onplay.reborn.onplayreborn.dtos.MovieRequestDTO;
 import com.onplay.reborn.onplayreborn.dtos.MovieResponseDTO;
-import com.onplay.reborn.onplayreborn.entities.User;
-import com.onplay.reborn.onplayreborn.repositories.UserRepository;
 import com.onplay.reborn.onplayreborn.services.MovieService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Base64;
-import java.util.Optional;
 
 import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/movies")
+@RequestMapping("/api")
 @CrossOrigin(origins = "*")
 public class MovieResource {
     
     @Autowired
     private MovieService movieService;
     
-    @Autowired
-    private UserRepository userRepository;
+    // Endpoints públicos (catalog)
+    @GetMapping("/catalog")
+    public ResponseEntity<List<MovieResponseDTO>> getCatalog() {
+        return ResponseEntity.ok(movieService.listarTodosFilmes());
+    }
     
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @GetMapping("/catalog/{id}")
+    public ResponseEntity<MovieResponseDTO> getCatalogMovie(@PathVariable Long id) {
+        Optional<MovieResponseDTO> movie = movieService.buscarPorId(id);
+        return movie.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    }
     
-    @PostMapping
-    public ResponseEntity<?> cadastrarFilme(@Valid @RequestBody MovieRequestDTO movieRequest, HttpServletRequest request) {
-        // Verificar autenticação
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Basic ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authorization required");
-        }
+    @GetMapping("/catalog/search")
+    public ResponseEntity<List<MovieResponseDTO>> searchCatalog(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String genero,
+            @RequestParam(required = false) Integer ano) {
         
-        try {
-            String base64Credentials = authHeader.substring("Basic ".length());
-            String credentials = new String(Base64.getDecoder().decode(base64Credentials));
-            String[] parts = credentials.split(":", 2);
-            
-            if (parts.length != 2) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials format");
-            }
-            
-            String login = parts[0];
-            String password = parts[1];
-            
-            Optional<User> userOpt = userRepository.findByUsernameOrEmail(login);
-            if (userOpt.isEmpty() || !passwordEncoder.matches(password, userOpt.get().getPassword())) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-            }
-            
-            MovieResponseDTO response = movieService.cadastrarFilme(movieRequest);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        if (nome != null) return ResponseEntity.ok(movieService.buscarPorNome(nome));
+        if (genero != null) return ResponseEntity.ok(movieService.buscarPorGenero(genero));
+        if (ano != null) return ResponseEntity.ok(movieService.buscarPorAno(ano));
+        
+        return ResponseEntity.ok(movieService.listarTodosFilmes());
     }
     
-    @GetMapping
+    // Endpoints protegidos (movies - admin)
+    @PostMapping("/movies")
+    public ResponseEntity<MovieResponseDTO> cadastrarFilme(@Valid @RequestBody MovieRequestDTO movieRequest) {
+        MovieResponseDTO response = movieService.cadastrarFilme(movieRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    
+    @GetMapping("/movies")
     public ResponseEntity<List<MovieResponseDTO>> listarFilmes() {
-        List<MovieResponseDTO> movies = movieService.listarTodosFilmes();
-        return ResponseEntity.ok(movies);
+        return ResponseEntity.ok(movieService.listarTodosFilmes());
     }
     
-    @GetMapping("/{id}")
+    @GetMapping("/movies/{id}")
     public ResponseEntity<MovieResponseDTO> buscarPorId(@PathVariable Long id) {
         Optional<MovieResponseDTO> movie = movieService.buscarPorId(id);
-        return movie.map(ResponseEntity::ok)
-                   .orElse(ResponseEntity.notFound().build());
-    }
-    
-    @GetMapping("/genero/{genero}")
-    public ResponseEntity<List<MovieResponseDTO>> buscarPorGenero(@PathVariable String genero) {
-        List<MovieResponseDTO> movies = movieService.buscarPorGenero(genero);
-        return ResponseEntity.ok(movies);
-    }
-    
-    @GetMapping("/buscar")
-    public ResponseEntity<List<MovieResponseDTO>> buscarPorNome(@RequestParam String nome) {
-        List<MovieResponseDTO> movies = movieService.buscarPorNome(nome);
-        return ResponseEntity.ok(movies);
-    }
-    
-    @GetMapping("/ano/{ano}")
-    public ResponseEntity<List<MovieResponseDTO>> buscarPorAno(@PathVariable Integer ano) {
-        List<MovieResponseDTO> movies = movieService.buscarPorAno(ano);
-        return ResponseEntity.ok(movies);
+        return movie.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 }
