@@ -4,6 +4,7 @@ import com.onplay.reborn.onplayreborn.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -43,7 +44,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/catalog/**").permitAll()
-                .requestMatchers("POST", "/api/movies").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/movies").authenticated()
                 .anyRequest().permitAll()
             )
             .httpBasic(basic -> {});
