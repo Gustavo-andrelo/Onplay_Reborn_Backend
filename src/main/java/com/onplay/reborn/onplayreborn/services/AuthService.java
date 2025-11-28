@@ -37,7 +37,7 @@ public class AuthService {
             return new LoginResponseDTO("Senha incorreta", false, null);
         }
         
-        return new LoginResponseDTO("Login realizado com sucesso", true, user.getUsername());
+        return new LoginResponseDTO("Login realizado com sucesso", true, user.getUsername(), user.getRole());
     }
     
     public LoginResponseDTO register(UserRegistrationDTO registrationDTO) {
@@ -51,6 +51,7 @@ public class AuthService {
         
         User user = userMapper.toEntity(registrationDTO);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setRole("USER");
         
         userRepository.save(user);
         
